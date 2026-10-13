@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>العربي من اليمين</title>
+  <link rel="stylesheet" href="../fonts.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../images/logo-light.png" alt="YASFORCODE" class="logo">
+  </header>
+
+  <main>
+    <h1>العربي من اليمين</h1>
+
+    <div id="on-site" class="row" hidden>
+      <div class="site">
+        <span class="label">الموقع الحالي</span>
+        <span id="host" class="host"></span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle">
+        <span class="track"><span class="thumb"></span></span>
+      </label>
+    </div>
+
+    <p id="state" class="state"></p>
+
+    <p id="no-site" class="state" hidden>هذي الصفحة من صفحات المتصفح الداخلية والإضافة ما تشتغل فيها</p>
+  </main>
+
+  <footer>
+    <a href="#" id="welcome">كيف تشتغل الإضافة</a>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

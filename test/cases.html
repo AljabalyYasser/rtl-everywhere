@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RTL cases</title>
+  <style>
+    /* نفس تنسيقات المواقع اللي ما تدعم العربي */
+    body { font-family: system-ui, sans-serif; text-align: left; max-width: 760px; margin: 20px auto; padding: 0 16px; }
+    .case { border: 1px solid #ddd; border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+    .case > h3 { margin: 0 0 8px; font-size: 13px; color: #888; }
+    .markdown p { text-align: left; }
+    .markdown ol, .markdown ul { padding-left: 26px; padding-right: 0; }
+    .markdown table { border-collapse: collapse; }
+    .markdown td, .markdown th { border: 1px solid #ccc; padding: 4px 10px; text-align: left; }
+    pre { background: #222; color: #eee; padding: 10px; border-radius: 8px; }
+    .editor { border: 1px solid #aaa; min-height: 40px; padding: 8px; }
+    textarea { width: 100%; height: 60px; }
+  </style>
+</head>
+<body>
+
+<div class="case" id="chat">
+  <h3>chat reply</h3>
+  <div class="markdown">
+    <p id="p-ar">هذا رد عربي من الذكاء الاصطناعي، وفيه علامات ترقيم في آخر الجملة؟</p>
+    <p id="p-mixed">React مكتبة تستخدم لبناء الواجهات، وأشهر دالة فيها هي <code>useState</code> وتستخدمها لحفظ الحالة.</p>
+    <p id="p-en">This paragraph is English with one word عربي inside it.</p>
+    <ol id="list">
+      <li>الخطوة الأولى اكتب الحالة.</li>
+      <li>الخطوة الثانية حدثها.</li>
+      <li>Run the app</li>
+    </ol>
+    <table id="table">
+      <tr><th>الاسم</th><th>السعر</th></tr>
+      <tr><td>قهوة</td><td>15 ريال</td></tr>
+      <tr><td>Latte</td><td>18 ريال</td></tr>
+    </table>
+    <pre id="code"><code>const name = "اسم";
+console.log(name);</code></pre>
+  </div>
+</div>
+
+<div class="case" id="stream-case">
+  <h3>streaming</h3>
+  <div class="markdown"><p id="stream"></p></div>
+</div>
+
+<div class="case" dir="rtl" id="native">
+  <h3>site already rtl</h3>
+  <p id="p-native">هذا موقع عربي ضابط الاتجاه من نفسه.</p>
+</div>
+
+<div class="case">
+  <h3>textarea</h3>
+  <textarea id="ta"></textarea>
+</div>
+
+<div class="case">
+  <h3>mail editor</h3>
+  <div class="editor" id="mail" contenteditable="true"><p id="mail-p"><br></p></div>
+</div>
+
+<div class="case">
+  <h3>framework editor</h3>
+  <div id="pm-holder"><div class="ProseMirror editor" id="pm" contenteditable="true"><p id="pm-p"><br></p></div></div>
+</div>
+
+<div class="case">
+  <h3>iframe editor</h3>
+  <iframe id="frame" style="width:100%;height:90px;border:1px solid #aaa"></iframe>
+</div>
+
+<script>
+  // محرر داخل إطار مثل محرر البريد في هوستنقر
+  const f = document.getElementById('frame');
+  const d = f.contentDocument;
+  d.open();
+  d.write('<html><body contenteditable="true" style="font-family:sans-serif;text-align:left"><p id="fp"><br></p></body></html>');
+  d.close();
+
+  // رد ينكتب حرف حرف ويبدأ بكلمة إنجليزية
+  window.startStream = () => {
+    const text = 'Python لغة برمجة سهلة ومناسبة للمبتدئين وتستخدم في تحليل البيانات والذكاء الاصطناعي.';
+    const el = document.getElementById('stream');
+    let i = 0;
+    const t = setInterval(() => {
+      el.textContent += text.slice(i, i + 3);
+      i += 3;
+      if (i >= text.length) { clearInterval(t); window.streamDone = true; }
+    }, 15);
+  };
+</script>
+</body>
+</html>
