@@ -207,14 +207,21 @@ table[${MARK}="rtl"] { margin-left: auto; }
   function run(roots) {
     styleCache = new Map();
     const blocks = new Set();
+    const edited = new Set();
     for (const r of roots) {
       if (!r.isConnected) continue;
+      const el = r.nodeType === 3 ? r.parentElement : r;
+      if (el && el.isContentEditable) {
+        edited.add(el);
+        continue;
+      }
       for (const b of scan(r)) blocks.add(b);
       // النص اللي تغير ممكن يقلب فقرة كانت عربية
       const b = blockOf(r);
       if (b && b.getAttribute(MARK)) blocks.add(b);
     }
     for (const b of blocks) evaluate(b);
+    for (const el of edited) if (el.isConnected) fixEditedNode(el);
     styleCache = new Map();
   }
 
@@ -260,7 +267,22 @@ table[${MARK}="rtl"] { margin-left: auto; }
     if (root.closest(SKIP)) return;
     if (AR.test(root.textContent || '')) markEditor(root);
     if (root.closest(MANAGED_EDITORS) || root.querySelector(MANAGED_EDITORS)) return;
-    const block = caretBlock(root);
+    setBlockDir(caretBlock(root));
+  }
+
+  // بعض المحررات تمنع الكتابة العادية وتكتب الحروف بنفسها فما يوصلنا خبر الكتابة
+  // مثل بريد هوستنقر فنضبط السطر اللي تغير من التغيير نفسه
+  function fixEditedNode(el) {
+    const root = editorRoot(el);
+    if (root.closest(SKIP)) return;
+    if (AR.test(root.textContent || '')) markEditor(root);
+    if (root.closest(MANAGED_EDITORS) || root.querySelector(MANAGED_EDITORS)) return;
+    let b = el;
+    while (b && b !== root && !/^(P|DIV|LI|H[1-6]|BLOCKQUOTE)$/.test(b.tagName)) b = b.parentElement;
+    setBlockDir(b || root);
+  }
+
+  function setBlockDir(block) {
     if (!block) return;
     const text = block.textContent || '';
     if (isArabic(text)) {

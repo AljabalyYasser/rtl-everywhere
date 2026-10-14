@@ -99,6 +99,11 @@ console.log(name);</code></pre>
   <div id="live"><p id="live-p"></p></div>
 </div>
 
+<div class="case">
+  <h3>custom editor like hostinger mail</h3>
+  <div class="hmail-editor" id="hm" contenteditable="true" style="border:1px solid #aaa;min-height:40px;unicode-bidi:isolate"><div id="hm-p"><br></div></div>
+</div>
+
 <script>
   // محرر داخل إطار مثل محرر البريد في هوستنقر
   const f = document.getElementById('frame');
@@ -119,6 +124,23 @@ console.log(name);</code></pre>
   // محرر داخل مكون مغلق
   const sh = document.getElementById('shadow-host').attachShadow({ mode: 'open' });
   sh.innerHTML = '<div contenteditable="true" id="sh-ed" style="border:1px solid #aaa;min-height:40px;text-align:left"><div id="sh-p"><br></div></div>';
+
+
+  // محرر يمنع الكتابة العادية ويكتب الحروف بنفسه
+  document.getElementById('hm').addEventListener('beforeinput', (e) => {
+    if (e.inputType !== 'insertText') return;
+    e.preventDefault();
+    const sel = getSelection();
+    let n = sel.anchorNode;
+    if (n.nodeType !== 3) {
+      const t = document.createTextNode('');
+      if (n.firstChild && n.firstChild.nodeName === 'BR') n.firstChild.remove();
+      n.appendChild(t);
+      n = t;
+    }
+    n.data += e.data;
+    sel.collapse(n, n.data.length);
+  });
 
   // رد ينكتب حرف حرف ويبدأ بكلمة إنجليزية
   window.startStream = () => {

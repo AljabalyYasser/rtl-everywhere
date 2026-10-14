@@ -162,6 +162,14 @@ def main():
         sh_dir = page.evaluate("document.getElementById('shadow-host').shadowRoot.getElementById('sh-p').getAttribute('dir')")
         check('محرر داخل مكون مغلق يحفظ الاتجاه', sh_dir == 'rtl', sh_dir)
 
+
+        # محرر يكتب الحروف بنفسه مثل بريد هوستنقر
+        page.click('#hm-p')
+        page.keyboard.type('عندي مشكلة في موقع jameyathadaya.com شهادة SSL منتهية')
+        page.wait_for_timeout(300)
+        hm = page.evaluate("[document.getElementById('hm').innerHTML, getComputedStyle(document.getElementById('hm-p')).direction]")
+        check('محرر يكتب الحروف بنفسه يصير من اليمين', 'dir="rtl"' in hm[0] and hm[1] == 'rtl', hm)
+
         # شريط نافذة فيه عنوان عربي وأزرار
         tb = page.evaluate("[getComputedStyle(document.getElementById('titlebar')).direction, document.getElementById('close').getBoundingClientRect().left < 100]")
         check('شريط النافذة ما تنقلب أزراره', tb[0] == 'ltr' and tb[1], tb)
