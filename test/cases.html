@@ -70,6 +70,35 @@ console.log(name);</code></pre>
   <iframe id="frame" style="width:100%;height:90px;border:1px solid #aaa"></iframe>
 </div>
 
+
+<div class="case">
+  <h3>late iframe editor</h3>
+  <iframe id="frame2" style="width:100%;height:90px;border:1px solid #aaa"></iframe>
+</div>
+
+<div class="case">
+  <h3>srcdoc iframe editor</h3>
+  <iframe id="frame3" style="width:100%;height:90px;border:1px solid #aaa" srcdoc='<html><body contenteditable="true" style="font-family:sans-serif"><div id="sp"><br></div></body></html>'></iframe>
+</div>
+
+<div class="case">
+  <h3>shadow editor</h3>
+  <div id="shadow-host"></div>
+</div>
+
+<div class="case">
+  <h3>window title bar</h3>
+  <div id="titlebar" style="display:flex;justify-content:space-between;align-items:center;border:1px solid #aaa;padding:6px">
+    <span><button id="close">x</button><button>-</button></span>
+    <b id="title">Test عربي</b>
+  </div>
+</div>
+
+<div class="case">
+  <h3>live stream</h3>
+  <div id="live"><p id="live-p"></p></div>
+</div>
+
 <script>
   // محرر داخل إطار مثل محرر البريد في هوستنقر
   const f = document.getElementById('frame');
@@ -77,6 +106,19 @@ console.log(name);</code></pre>
   d.open();
   d.write('<html><body contenteditable="true" style="font-family:sans-serif;text-align:left"><p id="fp"><br></p></body></html>');
   d.close();
+
+
+  // محرر يبني إطاره متأخر بعد ما تبدأ الإضافة
+  setTimeout(() => {
+    const d2 = document.getElementById('frame2').contentDocument;
+    d2.open();
+    d2.write('<html><body contenteditable="true" style="font-family:sans-serif;text-align:left"><div id="lp"><br></div></body></html>');
+    d2.close();
+  }, 2500);
+
+  // محرر داخل مكون مغلق
+  const sh = document.getElementById('shadow-host').attachShadow({ mode: 'open' });
+  sh.innerHTML = '<div contenteditable="true" id="sh-ed" style="border:1px solid #aaa;min-height:40px;text-align:left"><div id="sh-p"><br></div></div>';
 
   // رد ينكتب حرف حرف ويبدأ بكلمة إنجليزية
   window.startStream = () => {

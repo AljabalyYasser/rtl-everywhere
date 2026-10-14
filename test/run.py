@@ -137,6 +137,44 @@ def main():
         fhtml = page.frames[1].evaluate('document.body.innerHTML')
         check('محرر داخل إطار يحفظ الاتجاه', 'dir="rtl"' in fhtml, fhtml)
 
+
+        # محرر يبني إطاره بعد ما تبدأ الإضافة مثل بريد هوستنقر
+        page.wait_for_timeout(3200)
+        f2 = page.frame_locator('#frame2')
+        f2.locator('#lp').click()
+        page.keyboard.type('عندي مشكلة في موقع jameyathadaya.com شهادة SSL منتهية')
+        page.wait_for_timeout(300)
+        f2doc = [fr for fr in page.frames if fr.name == '' and fr != page.main_frame]
+        lp_dir = page.evaluate("document.getElementById('frame2').contentDocument.getElementById('lp').getAttribute('dir')")
+        check('محرر يبني إطاره متأخر يحفظ الاتجاه', lp_dir == 'rtl', lp_dir)
+
+        # إطار مكتوب في الصفحة نفسها
+        page.frame_locator('#frame3').locator('#sp').click()
+        page.keyboard.type('رسالة من إطار مكتوب في الصفحة')
+        page.wait_for_timeout(300)
+        sp_dir = page.evaluate("document.getElementById('frame3').contentDocument.getElementById('sp').getAttribute('dir')")
+        check('إطار مكتوب في الصفحة يحفظ الاتجاه', sp_dir == 'rtl', sp_dir)
+
+        # محرر داخل مكون مغلق
+        page.click('#shadow-host')
+        page.keyboard.type('مرحبا من داخل المكون')
+        page.wait_for_timeout(300)
+        sh_dir = page.evaluate("document.getElementById('shadow-host').shadowRoot.getElementById('sh-p').getAttribute('dir')")
+        check('محرر داخل مكون مغلق يحفظ الاتجاه', sh_dir == 'rtl', sh_dir)
+
+        # شريط نافذة فيه عنوان عربي وأزرار
+        tb = page.evaluate("[getComputedStyle(document.getElementById('titlebar')).direction, document.getElementById('close').getBoundingClientRect().left < 100]")
+        check('شريط النافذة ما تنقلب أزراره', tb[0] == 'ltr' and tb[1], tb)
+
+        # الرد ينضبط قبل ما يرسمه المتصفح
+        before_paint = page.evaluate("""async () => {
+            const p = document.getElementById('live-p');
+            p.textContent = 'هذا رد عربي جديد';
+            await null;
+            return p.getAttribute('dir');
+        }""")
+        check('الرد ينضبط من أول حرف بدون تأخير', before_paint == 'rtl', before_paint)
+
         page.screenshot(path=os.path.join(SHOTS, 'after.png'), full_page=True)
 
         # زر الإيقاف يرجع الصفحة مثل ما كانت

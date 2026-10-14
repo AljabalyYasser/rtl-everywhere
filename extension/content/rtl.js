@@ -28,6 +28,7 @@
   const CSS = `
 [${MARK}="rtl"] { direction: rtl; }
 [${MARK}="ltr"] { direction: ltr; }
+[${MARK}="plain"] { unicode-bidi: plaintext; }
 [${ALIGN}] { text-align: right !important; }
 table[${MARK}="rtl"] { margin-left: auto; }
 [${MARK}="rtl"] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, dd, dt, figcaption, td, th, div):not([${MARK}]) { unicode-bidi: plaintext; }
@@ -36,6 +37,8 @@ table[${MARK}="rtl"] { margin-left: auto; }
 [${MARK}] :is(code, kbd, samp) { direction: ltr; unicode-bidi: isolate; }
 [${MARK}] :is(.katex, .MathJax, svg) { direction: ltr; unicode-bidi: isolate; }
 [${MARK}] a { unicode-bidi: plaintext; }
+[${EDIT}][contenteditable]:not([contenteditable="false"]),
+[${EDIT}][contenteditable]:not([contenteditable="false"]) :is(p, div, li, h1, h2, h3, h4, h5, h6, blockquote),
 [${EDIT}] [contenteditable]:not([contenteditable="false"]),
 [${EDIT}] [contenteditable]:not([contenteditable="false"]) :is(p, div, li, h1, h2, h3, h4, h5, h6, blockquote) { unicode-bidi: plaintext; text-align: start; }
 [${EDIT}] [contenteditable] :is(pre, code) { unicode-bidi: isolate; direction: ltr; text-align: left; }
@@ -64,6 +67,7 @@ table[${MARK}="rtl"] { margin-left: auto; }
   let running = false;
   let observer = null;
   let timer = 0;
+  let watch = 0;
   const pending = new Set();
 
   function cs(el) {
@@ -124,14 +128,20 @@ table[${MARK}="rtl"] { margin-left: auto; }
     const text = el.textContent || '';
 
     if (isArabic(text)) {
-      if (mine === 'rtl') return;
+      if (mine === 'rtl' || mine === 'plain') return;
+      // صف أزرار وعنوان مثل شريط النافذة: نقلبه يخرب ترتيب الأزرار فنضبط النص بس
+      if (!mine && /flex|grid/.test(cs(el).display) && el.children.length > 1) {
+        remember(el);
+        el.setAttribute(MARK, 'plain');
+        return;
+      }
       // الموقع ضابطه من نفسه
       if (!mine && cs(el).direction === 'rtl' && !el.parentElement?.closest(`[${MARK}="rtl"]`)) return;
       setDir(el, 'rtl');
       if (cs(el).textAlign === 'left') el.setAttribute(ALIGN, '');
       fixList(el);
       fixTable(el);
-    } else if (mine === 'rtl') {
+    } else if (mine === 'rtl' || mine === 'plain') {
       restore(el);
     }
   }
@@ -202,7 +212,7 @@ table[${MARK}="rtl"] { margin-left: auto; }
       for (const b of scan(r)) blocks.add(b);
       // النص اللي تغير ممكن يقلب فقرة كانت عربية
       const b = blockOf(r);
-      if (b && b.getAttribute(MARK) === 'rtl') blocks.add(b);
+      if (b && b.getAttribute(MARK)) blocks.add(b);
     }
     for (const b of blocks) evaluate(b);
     styleCache = new Map();
@@ -232,7 +242,8 @@ table[${MARK}="rtl"] { margin-left: auto; }
   }
 
   function caretBlock(root) {
-    const sel = root.ownerDocument.getSelection();
+    const host = root.getRootNode();
+    const sel = (host && host.getSelection && host.getSelection()) || root.ownerDocument.getSelection();
     if (!sel || !sel.anchorNode) return null;
     let el = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
     if (!el || !root.contains(el)) return null;
@@ -274,16 +285,61 @@ table[${MARK}="rtl"] { margin-left: auto; }
     }
   }
 
+  // العنصر الحقيقي حتى لو كان داخل مكون مغلق مثل بعض محررات البريد
+  function realTarget(e) {
+    const path = e.composedPath ? e.composedPath() : [];
+    const t = path[0] || e.target;
+    return t && t.nodeType === 3 ? t.parentElement : t;
+  }
+
   function onInput(e) {
-    const t = e.target;
-    if (!(t instanceof Element)) return;
+    const t = realTarget(e);
+    if (!t || t.nodeType !== 1) return;
+    shadowStyle(t);
     if (t.matches(FIELD)) fixField(t);
     else if (t.isContentEditable) fixEditable(t);
   }
 
   function onFocus(e) {
-    const t = e.target;
-    if (t instanceof Element && t.matches(FIELD) && t.value) fixField(t);
+    const t = realTarget(e);
+    if (t && t.nodeType === 1 && t.matches(FIELD) && t.value) fixField(t);
+  }
+
+  // التنسيق ما يدخل المكونات المغلقة فنحطه داخلها
+  const styled = new WeakSet();
+  let shadowStyles = [];
+  function shadowStyle(el) {
+    const r = el.getRootNode && el.getRootNode();
+    if (!r || r.nodeType !== 11 || styled.has(r)) return;
+    styled.add(r);
+    const st = r.ownerDocument.createElement('style');
+    st.setAttribute('data-rtle-style', '');
+    st.textContent = CSS;
+    r.appendChild(st);
+    shadowStyles.push(st);
+  }
+
+  // ---------- الإطارات ----------
+  // بعض المحررات تبني إطارها بعد ما يفتح المتصفح الصفحة فما تصله الإضافة
+  // فنربطه من الصفحة الأم ما دام من نفس الموقع
+  const linked = new WeakSet();
+  function linkFrame(f) {
+    let doc;
+    try { doc = f.contentDocument; } catch (e) { return; }
+    if (!doc || !doc.documentElement || linked.has(doc)) return;
+    if (doc.getElementById(STYLE_ID)) return; // الإضافة شغالة فيه من نفسها
+    linked.add(doc);
+    const st = doc.createElement('style');
+    st.id = STYLE_ID;
+    st.textContent = CSS;
+    (doc.head || doc.documentElement).appendChild(st);
+    doc.addEventListener('input', onInput, true);
+    doc.addEventListener('focusin', onFocus, true);
+    if (doc.body && AR.test(doc.body.textContent || '')) markEditors(doc.body);
+  }
+
+  function linkFrames() {
+    for (const f of document.querySelectorAll('iframe')) linkFrame(f);
   }
 
   // ---------- التشغيل والإيقاف ----------
@@ -297,8 +353,18 @@ table[${MARK}="rtl"] { margin-left: auto; }
 
   function queue(node) {
     pending.add(node);
-    // ننتظر شوي عشان الردود اللي تنكتب حرف حرف ما تثقل الصفحة
-    if (!timer) timer = setTimeout(flush, 120);
+  }
+
+  // نضبط التغيير قبل ما يرسمه المتصفح عشان الرد اللي ينكتب يطلع من اليمين من أول حرف
+  // ولو التغيير كبير جدا نأجله شوي عشان ما تعلق الصفحة
+  function afterMutations() {
+    if (!pending.size) return;
+    if (pending.size > 400) {
+      if (!timer) timer = setTimeout(flush, 60);
+      return;
+    }
+    clearTimeout(timer);
+    flush();
   }
 
   function start() {
@@ -317,13 +383,27 @@ table[${MARK}="rtl"] { margin-left: auto; }
     observer = new MutationObserver((muts) => {
       for (const m of muts) {
         if (m.type === 'characterData') queue(m.target);
-        else for (const n of m.addedNodes) if (n.nodeType === 1 || n.nodeType === 3) queue(n);
+        else for (const n of m.addedNodes) {
+          if (n.nodeType === 1 || n.nodeType === 3) queue(n);
+          if (n.nodeName === 'IFRAME' || (n.nodeType === 1 && n.querySelector && n.querySelector('iframe'))) setTimeout(linkFrames, 300);
+        }
       }
+      afterMutations();
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     document.addEventListener('input', onInput, true);
     document.addEventListener('focusin', onFocus, true);
+    linkFrames();
+    // المحرر أحيانا يعيد بناء صفحته بعد ما بدأت الإضافة فنتأكد كل شوي
+    watch = setInterval(() => {
+      if (!document.getElementById(STYLE_ID) && document.body) {
+        running = false;
+        observer?.disconnect();
+        start();
+      }
+      linkFrames();
+    }, 1500);
   }
 
   function stop() {
@@ -336,6 +416,19 @@ table[${MARK}="rtl"] { margin-left: auto; }
     pending.clear();
     document.removeEventListener('input', onInput, true);
     document.removeEventListener('focusin', onFocus, true);
+    clearInterval(watch);
+    for (const st of shadowStyles) { st.getRootNode && styled.delete(st.getRootNode()); st.remove(); }
+    shadowStyles = [];
+    for (const f of document.querySelectorAll('iframe')) {
+      let doc;
+      try { doc = f.contentDocument; } catch (e) { continue; }
+      if (!doc || !linked.has(doc)) continue;
+      linked.delete(doc);
+      doc.removeEventListener('input', onInput, true);
+      doc.removeEventListener('focusin', onFocus, true);
+      doc.getElementById(STYLE_ID)?.remove();
+      for (const el of doc.querySelectorAll(`[${EDIT}]`)) el.removeAttribute(EDIT);
+    }
     for (const el of document.querySelectorAll(`[${MARK}]`)) restore(el);
     for (const el of document.querySelectorAll(`[${EDIT}]`)) el.removeAttribute(EDIT);
     document.getElementById(STYLE_ID)?.remove();
